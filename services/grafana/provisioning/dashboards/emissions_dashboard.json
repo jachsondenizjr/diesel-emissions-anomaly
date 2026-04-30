@@ -1,0 +1,583 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_EMISSIONSDB",
+      "label": "EmissionsDB",
+      "type": "datasource",
+      "pluginId": "postgres"
+    }
+  ],
+  "__requires": [
+    { "type": "grafana",    "id": "grafana",    "name": "Grafana",        "version": "10.4.0" },
+    { "type": "datasource", "id": "postgres",   "name": "PostgreSQL",     "version": "1.0.0"  },
+    { "type": "panel",      "id": "stat",       "name": "Stat",           "version": ""       },
+    { "type": "panel",      "id": "gauge",      "name": "Gauge",          "version": ""       },
+    { "type": "panel",      "id": "timeseries", "name": "Time series",    "version": ""       },
+    { "type": "panel",      "id": "piechart",   "name": "Pie chart",      "version": ""       },
+    { "type": "panel",      "id": "table",      "name": "Table",          "version": ""       }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0,211,255,1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["diesel", "emissions", "anomaly-detection", "epa", "conama"],
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "title": "Diesel Emissions — Anomaly Detection",
+  "uid": "diesel-emissions-v1",
+  "version": 1,
+
+  "templating": {
+    "list": [
+      {
+        "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+        "definition": "SELECT DISTINCT vehicle_id FROM anomaly_results ORDER BY 1",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": ".*",
+        "label": "Vehicle",
+        "multi": true,
+        "name": "vehicle",
+        "query": "SELECT DISTINCT vehicle_id FROM anomaly_results ORDER BY 1",
+        "refresh": 2,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+
+  "panels": [
+
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Active Vehicles",
+      "description": "Distinct vehicles with readings in the selected window",
+      "gridPos": { "h": 4, "w": 5, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue",  "value": null },
+              { "color": "green", "value": 1    }
+            ]
+          },
+          "unit": "none",
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+          "format": "table",
+          "rawSql": "SELECT COUNT(DISTINCT vehicle_id) AS \"Active Vehicles\"\nFROM raw_emissions\nWHERE $__timeFilter(ts)",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Anomaly Rate",
+      "description": "% of readings flagged as anomalous by Isolation Forest",
+      "gridPos": { "h": 4, "w": 5, "x": 5, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 5    },
+              { "color": "red",    "value": 15   }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+          "format": "table",
+          "rawSql": "SELECT ROUND(\n  COUNT(*) FILTER (WHERE is_anomaly)::numeric * 100.0\n  / NULLIF(COUNT(*), 0)\n, 1) AS \"Anomaly Rate %\"\nFROM anomaly_results\nWHERE $__timeFilter(ts)",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "EPA Non-compliant Readings",
+      "description": "Readings classified as Non-compliant (NOx > 270 mg/km)",
+      "gridPos": { "h": 4, "w": 5, "x": 10, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 1    },
+              { "color": "red",    "value": 10   }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) AS \"EPA Non-compliant\"\nFROM anomaly_results\nWHERE $__timeFilter(ts)\n  AND epa_tier = 'Non-compliant'",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "CONAMA Violations",
+      "description": "Readings with PM2.5 > 25 µg/m³ (CONAMA Resolution 18)",
+      "gridPos": { "h": 4, "w": 5, "x": 15, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 1    },
+              { "color": "red",    "value": 5    }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) AS \"CONAMA Violations\"\nFROM anomaly_results\nWHERE $__timeFilter(ts)\n  AND conama_compliant = false",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 5,
+      "type": "gauge",
+      "title": "Fleet CONAMA Compliance",
+      "description": "% of fleet readings within CONAMA PM2.5 limit",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "yellow", "value": 80   },
+              { "color": "green",  "value": 95   }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+          "format": "table",
+          "rawSql": "SELECT ROUND(\n  COUNT(*) FILTER (WHERE conama_compliant)::numeric * 100.0\n  / NULLIF(COUNT(*), 0)\n, 1) AS \"Compliance %\"\nFROM anomaly_results\nWHERE $__timeFilter(ts)",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "NOx Emissions by Vehicle (mg/km)",
+      "description": "Avg NOx per vehicle over time. EPA Tier2-Bin9 limit: 270 mg/km.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "mg/km",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "unit": "none",
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "EPA Limit" },
+            "properties": [
+              { "id": "color",       "value": { "fixedColor": "red", "mode": "fixed" } },
+              { "id": "custom.lineWidth", "value": 2 },
+              { "id": "custom.lineStyle", "value": { "dash": [8, 4], "fill": "dash" } },
+              { "id": "custom.fillOpacity", "value": 0 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip":  { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+          "format": "time_series",
+          "rawSql": "SELECT\n  $__timeGroup(ts, $__interval) AS time,\n  vehicle_id               AS metric,\n  ROUND(AVG(nox_mg_km)::numeric, 2) AS value\nFROM anomaly_results\nWHERE $__timeFilter(ts)\n  AND vehicle_id ~ '$vehicle'\nGROUP BY 1, 2\nORDER BY 1",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+          "format": "time_series",
+          "rawSql": "SELECT\n  $__timeGroup(ts, $__interval) AS time,\n  'EPA Limit'               AS metric,\n  270                       AS value\nFROM anomaly_results\nWHERE $__timeFilter(ts)\nGROUP BY 1\nORDER BY 1",
+          "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "PM2.5 Emissions by Vehicle (µg/m³)",
+      "description": "Avg PM2.5 per vehicle over time. CONAMA limit: 25 µg/m³.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "µg/m³",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "unit": "none",
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "CONAMA Limit" },
+            "properties": [
+              { "id": "color",       "value": { "fixedColor": "orange", "mode": "fixed" } },
+              { "id": "custom.lineWidth", "value": 2 },
+              { "id": "custom.lineStyle", "value": { "dash": [8, 4], "fill": "dash" } },
+              { "id": "custom.fillOpacity", "value": 0 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip":  { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+          "format": "time_series",
+          "rawSql": "SELECT\n  $__timeGroup(ts, $__interval) AS time,\n  vehicle_id               AS metric,\n  ROUND(AVG(pm25_ug_m3)::numeric, 3) AS value\nFROM anomaly_results\nWHERE $__timeFilter(ts)\n  AND vehicle_id ~ '$vehicle'\nGROUP BY 1, 2\nORDER BY 1",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+          "format": "time_series",
+          "rawSql": "SELECT\n  $__timeGroup(ts, $__interval) AS time,\n  'CONAMA Limit'            AS metric,\n  25                        AS value\nFROM anomaly_results\nWHERE $__timeFilter(ts)\nGROUP BY 1\nORDER BY 1",
+          "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Anomaly Events Over Time",
+      "description": "Anomalous vs total readings per time bucket.",
+      "gridPos": { "h": 8, "w": 14, "x": 0, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "unit": "none",
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Anomalies" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Normal" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom" },
+        "tooltip":  { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+          "format": "time_series",
+          "rawSql": "SELECT\n  $__timeGroup(ts, $__interval)               AS time,\n  SUM(is_anomaly::int)                        AS \"Anomalies\",\n  SUM((NOT is_anomaly)::int)                  AS \"Normal\"\nFROM anomaly_results\nWHERE $__timeFilter(ts)\n  AND vehicle_id ~ '$vehicle'\nGROUP BY 1\nORDER BY 1",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 9,
+      "type": "piechart",
+      "title": "EPA Tier Distribution",
+      "description": "Reading count by EPA emission tier in the selected window.",
+      "gridPos": { "h": 8, "w": 10, "x": 14, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "none", "mappings": [] },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Non-compliant" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "red",    "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Tier2-Bin9" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Tier2-Bin5" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Tier3" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "green",  "mode": "fixed" } }]
+          }
+        ]
+      },
+      "options": {
+        "displayLabels": ["name", "percent"],
+        "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] },
+        "pieType": "donut",
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+          "format": "table",
+          "rawSql": "SELECT\n  epa_tier    AS \"EPA Tier\",\n  COUNT(*)    AS \"Readings\"\nFROM anomaly_results\nWHERE $__timeFilter(ts)\n  AND vehicle_id ~ '$vehicle'\nGROUP BY 1\nORDER BY 2 DESC",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Recent Anomaly Events",
+      "description": "Latest 200 readings flagged as anomalous by the Isolation Forest model.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 20 },
+      "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red",   "value": 80   }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "NOx (mg/km)" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              { "id": "thresholds", "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green",  "value": null },
+                    { "color": "yellow", "value": 97   },
+                    { "color": "orange", "value": 270  },
+                    { "color": "red",    "value": 400  }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "PM2.5 (µg/m³)" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              { "id": "thresholds", "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green",  "value": null },
+                    { "color": "yellow", "value": 20   },
+                    { "color": "orange", "value": 25   },
+                    { "color": "red",    "value": 40   }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "CONAMA OK" },
+            "properties": [
+              { "id": "mappings", "value": [
+                  { "type": "value", "options": { "true":  { "text": "✓", "color": "green" } } },
+                  { "type": "value", "options": { "false": { "text": "✗", "color": "red"   } } }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Score" },
+            "properties": [
+              { "id": "custom.width", "value": 90  },
+              { "id": "unit",         "value": "none" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Timestamp" },
+            "properties": [
+              { "id": "custom.width", "value": 180 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer":  { "enablePagination": true, "countRows": false, "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "Timestamp" }]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "emissions-postgres" },
+          "format": "table",
+          "rawSql": "SELECT\n  ts                                         AS \"Timestamp\",\n  vehicle_id                                 AS \"Vehicle\",\n  ROUND(nox_mg_km::numeric,  1)              AS \"NOx (mg/km)\",\n  ROUND(pm25_ug_m3::numeric, 2)              AS \"PM2.5 (µg/m³)\",\n  ROUND(anomaly_score::numeric, 4)           AS \"Score\",\n  epa_tier                                   AS \"EPA Tier\",\n  conama_compliant                           AS \"CONAMA OK\"\nFROM anomaly_results\nWHERE $__timeFilter(ts)\n  AND is_anomaly = true\n  AND vehicle_id ~ '$vehicle'\nORDER BY ts DESC\nLIMIT 200",
+          "refId": "A"
+        }
+      ]
+    }
+
+  ]
+}

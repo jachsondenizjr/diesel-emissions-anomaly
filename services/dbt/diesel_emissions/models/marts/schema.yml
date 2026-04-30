@@ -1,0 +1,28 @@
+version: 2
+
+sources:
+  - name: emissions
+    database: emissions
+    schema: public
+    tables:
+      - name: anomaly_results
+        description: Scored readings written by the Kafka ML consumer
+
+models:
+  - name: mart_anomalies
+    description: >
+      Hourly anomaly aggregates per vehicle.
+      Powers the Grafana dashboard and the daily EPA/CONAMA compliance report.
+    columns:
+      - name: vehicle_id
+        tests: [not_null]
+      - name: hour
+        tests: [not_null]
+      - name: anomaly_rate_pct
+        description: Percentage of readings flagged as anomalies in that hour
+      - name: epa_classification
+        description: EPA emission tier based on hourly average NOx (mg/km)
+      - name: conama_pm25_ok
+        description: "True when avg PM2.5 <= 25 µg/m³ (CONAMA Resolution 18)"
+      - name: conama_compliant
+        description: All individual readings in the hour passed the CONAMA threshold

@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Docker
+docker-compose.override.yml
+
+# dbt
+services/dbt/diesel_emissions/target/
+services/dbt/diesel_emissions/dbt_packages/
+services/dbt/diesel_emissions/logs/
+
+# MLflow / models
+services/ml/models/*.joblib
+services/ml/models/*.pkl
+mlruns/
+
+# Data
+data/raw/*.csv
+data/raw/*.parquet
+data/processed/
+reports/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+
+# IDE
+.vscode/
+.idea/
+*.iml

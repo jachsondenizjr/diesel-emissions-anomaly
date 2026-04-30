@@ -1,0 +1,39 @@
+version: 2
+
+sources:
+  - name: emissions
+    database: emissions
+    schema: public
+    tables:
+      - name: raw_emissions
+        description: Raw sensor readings ingested from Kafka by the ML consumer
+        columns:
+          - name: vehicle_id
+            tests: [not_null]
+          - name: ts
+            tests: [not_null]
+          - name: nox_mg_km
+            description: Nitrogen oxides in mg/km
+            tests:
+              - not_null
+              - dbt_utils.accepted_range:
+                  min_value: 0
+          - name: pm25_ug_m3
+            description: Particulate matter PM2.5 in µg/m³
+            tests:
+              - not_null
+              - dbt_utils.accepted_range:
+                  min_value: 0
+
+models:
+  - name: stg_emissions
+    description: Cleaned and typed raw emissions ready for mart transformations
+    columns:
+      - name: vehicle_id
+        tests: [not_null]
+      - name: ts
+        tests: [not_null]
+      - name: nox_mg_km
+        tests: [not_null]
+      - name: pm25_ug_m3
+        tests: [not_null]
